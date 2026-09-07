@@ -18,7 +18,29 @@ from resume.resume_parser import extract_resume_text
 from resume.skill_extractor import extract_skills
 from resume.recommendations import recommend_skills
 from resume.learning_path import get_learning_path
-from backend.database.operations import (save_prediction, get_prediction_history,get_dashboard_stats)
+from backend.database.operations import (
+    save_prediction,
+    get_prediction_history,
+    get_dashboard_stats,
+    get_student_records
+)
+from backend.auth.authentication import (
+    login_user,
+    register_student
+)
+
+# -----------------------------
+# Login Session
+# -----------------------------
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "user" not in st.session_state:
+    st.session_state.user = None
+
+if "show_registration" not in st.session_state:
+    st.session_state.show_registration = False
 
 # -----------------------------
 # Streamlit Page Configuration
@@ -50,61 +72,11 @@ else:
 
     st.stop()
 
-# -----------------------------
-# Sidebar
-# -----------------------------
+# ==========================================================
+# LOGIN / REGISTRATION PAGE
+# ==========================================================
 
-st.sidebar.title("🎓 CareerAI")
-
-st.sidebar.markdown("---")
-
-menu = st.sidebar.radio(
-
-    "Navigation",
-
-    [
-
-        "🏠 Home",
-
-        "🎓 Placement Prediction",
-
-        "📄 Resume Analyzer",
-
-        "📊 Prediction History",
-
-        "👨‍💻 About"
-
-    ]
-
-)
-
-st.sidebar.markdown("---")
-
-st.sidebar.subheader("Technology Used")
-
-st.sidebar.write("🐍 Python")
-
-st.sidebar.write("🤖 Machine Learning")
-
-st.sidebar.write("📊 Scikit-Learn")
-
-st.sidebar.write("🗄️ MySQL")
-
-st.sidebar.write("🌐 Streamlit")
-
-st.sidebar.write("📑 Pandas")
-
-st.sidebar.markdown("---")
-
-st.sidebar.success("Developed by")
-
-st.sidebar.info("Aditi Sharma")
-
-# -----------------------------
-# HOME PAGE
-# -----------------------------
-
-if menu == "🏠 Home":
+if not st.session_state.logged_in:
 
     st.title("🎓 CareerAI")
 
@@ -112,92 +84,402 @@ if menu == "🏠 Home":
 
     st.markdown("---")
 
-    # -----------------------------------------
-    # Dashboard Statistics
-    # -----------------------------------------
+    # ======================================================
+    # STUDENT REGISTRATION
+    # ======================================================
 
-    total_predictions, placed_students, not_placed_students = get_dashboard_stats()
+    if st.session_state.show_registration:
 
-    st.subheader("📊 Dashboard Overview")
+        st.subheader("📝 Create Student Account")
 
-    col1, col2, col3 = st.columns(3)
+        st.markdown(
+            "Create an account to access the CareerAI Student Portal."
+        )
+
+        full_name = st.text_input(
+            "Full Name",
+            placeholder="Enter your full name"
+        )
+
+        email = st.text_input(
+            "Email",
+            placeholder="Enter your email address"
+        )
+
+        password = st.text_input(
+            "Password",
+            type="password",
+            placeholder="Create a password"
+        )
+
+        confirm_password = st.text_input(
+            "Confirm Password",
+            type="password",
+            placeholder="Re-enter your password"
+        )
+
+        register_button = st.button(
+            "📝 Create Account",
+            use_container_width=True
+        )
+
+        if register_button:
+
+            if (
+                full_name.strip() == ""
+                or email.strip() == ""
+                or password.strip() == ""
+                or confirm_password.strip() == ""
+            ):
+                st.warning(
+                    "⚠️ Please fill in all fields."
+                )
+
+            elif password != confirm_password:
+                st.error(
+                    "❌ Passwords do not match."
+                )
+
+            elif len(password) < 6:
+                st.error(
+                    "❌ Password must contain at least 6 characters."
+                )
+
+            else:
+
+                success, message = register_student(
+                    full_name.strip(),
+                    email.strip(),
+                    password
+                )
+
+                if success:
+
+                    st.success(
+                        "✅ Account created successfully!"
+                    )
+
+                    st.info(
+                        "You can now login using your email and password."
+                    )
+
+                    st.session_state.show_registration = False
+
+                else:
+
+                    st.error(
+                        f"❌ {message}"
+                    )
+
+        st.markdown("---")
+
+        if st.button(
+            "⬅️ Back to Login",
+            use_container_width=True
+        ):
+            st.session_state.show_registration = False
+            st.rerun()
+
+    # ======================================================
+    # LOGIN
+    # ======================================================
+
+    else:
+
+        st.subheader("🔐 Login")
+
+        email = st.text_input(
+            "Email",
+            placeholder="Enter your email"
+        )
+
+        password = st.text_input(
+            "Password",
+            type="password",
+            placeholder="Enter your password"
+        )
+
+        login_button = st.button(
+            "🔑 Login",
+            use_container_width=True
+        )
+
+        if login_button:
+
+            if (
+                email.strip() == ""
+                or password.strip() == ""
+            ):
+                st.warning(
+                    "⚠️ Please enter both email and password."
+                )
+
+            else:
+
+                user = login_user(
+                    email.strip(),
+                    password
+                )
+
+                if user:
+
+                    st.session_state.logged_in = True
+                    st.session_state.user = user
+
+                    st.success(
+                        "✅ Login successful!"
+                    )
+
+                    st.rerun()
+
+                else:
+
+                    st.error(
+                        "❌ Invalid email or password."
+                    )
+
+        st.markdown("---")
+
+        st.subheader("👨‍🎓 New Student?")
+
+        if st.button(
+            "📝 Create Student Account",
+            use_container_width=True
+        ):
+            st.session_state.show_registration = True
+            st.rerun()
+
+    st.stop()
+
+
+
+# ==========================================================
+# SIDEBAR
+# ==========================================================
+
+st.sidebar.title("🎓 CareerAI")
+st.sidebar.markdown("---")
+
+user = st.session_state.user
+
+user_role = user["role"]
+user_name = user["full_name"]
+
+
+# ==========================================================
+# STUDENT NAVIGATION
+# ==========================================================
+
+if user_role == "student":
+
+    st.sidebar.success(
+        f"👨‍🎓 Welcome, {user_name}"
+    )
+
+    menu = st.sidebar.radio(
+        "Navigation",
+        [
+            "🏠 Student Dashboard",
+            "🎓 Placement Prediction",
+            "📄 Resume Analyzer",
+            "📊 My Prediction History",
+            "👨‍💻 About"
+        ]
+    )
+
+
+# ==========================================================
+# ADMIN NAVIGATION
+# ==========================================================
+
+elif user_role == "admin":
+
+    st.sidebar.success(
+        f"👤 Welcome, {user_name}"
+    )
+
+    menu = st.sidebar.radio(
+        "Navigation",
+        [
+            "🏠 Admin Dashboard",
+            "📊 Placement Statistics",
+            "👨‍🎓 Student Records",
+            "📄 Resume Analysis",
+            "👨‍💻 About"
+        ]
+    )
+
+
+# ==========================================================
+# TECHNOLOGY
+# ==========================================================
+
+st.sidebar.markdown("---")
+
+st.sidebar.subheader("Technology Used")
+
+st.sidebar.write("🐍 Python")
+st.sidebar.write("🤖 Machine Learning")
+st.sidebar.write("📊 Scikit-Learn")
+st.sidebar.write("🗄️ MySQL")
+st.sidebar.write("🌐 Streamlit")
+st.sidebar.write("📑 Pandas")
+
+
+# ==========================================================
+# LOGOUT
+# ==========================================================
+
+st.sidebar.markdown("---")
+
+if st.sidebar.button(
+    "🚪 Logout",
+    use_container_width=True
+):
+
+    st.session_state.logged_in = False
+    st.session_state.user = None
+    st.session_state.show_registration = False
+
+    st.rerun()
+# ==========================================================
+# STUDENT DASHBOARD
+# ==========================================================
+
+if menu == "🏠 Student Dashboard":
+
+    st.title("👨‍🎓 Student Dashboard")
+
+    st.subheader(
+        f"Welcome, {user_name}! 👋"
+    )
+
+    st.markdown("---")
+
+    st.write(
+        """
+        Welcome to your CareerAI Student Portal.
+
+        Here you can check your placement prediction,
+        analyze your resume, improve your skills and
+        track your career progress.
+        """
+    )
+
+    st.markdown("---")
+
+    st.subheader("🚀 CareerAI Services")
+
+    col1, col2 = st.columns(2)
 
     with col1:
-        st.metric(
-            label="Total Predictions",
-            value=total_predictions
+
+        st.info(
+            "🎓 **Placement Prediction**\n\n"
+            "Check your predicted placement status "
+            "using your academic and skill profile."
+        )
+
+        st.info(
+            "📄 **Resume Analyzer**\n\n"
+            "Analyze your resume and identify important "
+            "skills for your target job role."
         )
 
     with col2:
-        st.metric(
-            label="Placed Students",
-            value=placed_students
+
+        st.info(
+            "💡 **Career Suggestions**\n\n"
+            "Get suggestions for improving your "
+            "skills and career profile."
         )
 
-    with col3:
-        st.metric(
-            label="Not Placed",
-            value=not_placed_students
+        st.info(
+            "📊 **Prediction History**\n\n"
+            "View your previous placement predictions."
         )
 
     st.markdown("---")
 
-    # -----------------------------------------
-    # Project Description
-    # -----------------------------------------
-
-    st.markdown(
-        """
-## Welcome to CareerAI
-
-CareerAI is an **Artificial Intelligence-based Placement Prediction System**
-developed to help students evaluate their placement readiness and identify
-the skills they need to improve.
-
-The system uses a **Machine Learning model** to predict whether a student
-is likely to be placed based on academic performance and skill-related
-information.
-
-### 🚀 Main Features
-
-- 🎓 Placement Prediction
-- 📄 Resume Analyzer
-- 📊 Prediction History
-- 💡 Career Recommendations
-- 🤖 Machine Learning Model
-- 🗄️ MySQL Database
-
----
-
-## 📌 Project Workflow
-
-👤 Student Information
-
-⬇
-
-📊 Placement Prediction
-
-⬇
-
-📄 Resume Analysis
-
-⬇
-
-🛠 Skill Gap Detection
-
-⬇
-
-📚 Learning Recommendations
-
-⬇
-
-🎯 Career Guidance
-
-"""
+    st.success(
+        "💡 Keep improving your skills and building "
+        "real-world projects!"
     )
 
-    st.success("✅ Select **Placement Prediction** from the sidebar to begin.")
+# ==========================================================
+# ADMIN DASHBOARD
+# ==========================================================
 
+elif menu == "🏠 Admin Dashboard":
+
+    st.title("👤 Admin Dashboard")
+
+    st.subheader(
+        "CareerAI Placement Management"
+    )
+
+    st.markdown("---")
+
+    total_predictions, placed_students, not_placed_students = (
+        get_dashboard_stats()
+    )
+
+    st.subheader("📊 Placement Overview")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Total Predictions",
+            total_predictions
+        )
+
+    with col2:
+
+        st.metric(
+            "Likely Placed",
+            placed_students
+        )
+
+    with col3:
+
+        st.metric(
+            "Likely Not Placed",
+            not_placed_students
+        )
+
+    st.markdown("---")
+
+    st.subheader("👨‍🎓 Student Monitoring")
+
+    st.write(
+        """
+        As an administrator, you can monitor student
+        placement predictions, analyze student profiles
+        and view overall placement statistics.
+        """
+    )
+
+    st.markdown("---")
+
+    st.subheader("📌 Admin Functions")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.info(
+            "👨‍🎓 **Student Records**\n\n"
+            "View registered student information."
+        )
+
+    with col2:
+
+        st.info(
+            "📊 **Placement Statistics**\n\n"
+            "Analyze overall placement prediction results."
+        )
 # -----------------------------------------------------------
 # Placement Prediction Page
 # -----------------------------------------------------------
@@ -552,22 +834,57 @@ elif menu == "📄 Resume Analyzer":
 # Prediction History
 # -----------------------------------------------------------
 
-elif menu == "📊 Prediction History":
+elif menu == "📊 My Prediction History":
 
-    st.title("📊 Prediction History")
+    st.title("📊 My Prediction History")
 
-    history = get_prediction_history()
+    user_id = st.session_state.user["user_id"]
+
+    history = get_prediction_history(user_id)
 
     if history.empty:
 
-        st.warning("No prediction history found.")
+        st.info("📭 You have not made any predictions yet.")
 
     else:
 
-        st.success(f"Total Predictions: {len(history)}")
+        st.success(
+            f"Total Predictions: {len(history)}"
+        )
 
         st.dataframe(
             history,
+            width="stretch"
+        )
+
+# -----------------------------------------------------------
+# Admin Student Records
+# -----------------------------------------------------------
+
+elif menu == "👨‍🎓 Student Records":
+
+    st.title("👨‍🎓 Student Records")
+
+    st.markdown(
+        "View registered students and their placement prediction information."
+    )
+
+    st.markdown("---")
+
+    records = get_student_records()
+
+    if records.empty:
+
+        st.info("📭 No student records found.")
+
+    else:
+
+        st.success(
+            f"Total Student Records: {len(records)}"
+        )
+
+        st.dataframe(
+            records,
             width="stretch"
         )
 
