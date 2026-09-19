@@ -22,7 +22,10 @@ from backend.database.operations import (
     save_prediction,
     get_prediction_history,
     get_dashboard_stats,
-    get_student_records
+    get_student_records,
+    save_resume,
+    get_student_resumes,
+    get_resume_by_user
 )
 from backend.auth.authentication import (
     login_user,
@@ -648,12 +651,12 @@ elif menu == "🎓 Placement Prediction":
         )
 
         save_prediction(
+            st.session_state.user["user_id"],
             student_name,
             job_role,
             prediction_result,
             float(confidence)
         )
-
         st.markdown("---")
         st.subheader("📊 Prediction Result")
 
@@ -740,11 +743,13 @@ elif menu == "🎓 Placement Prediction":
         st.markdown("---")
 
 # -----------------------------------------------------------
-# Resume Analyzer
+# Student Resume Analyzer
 # -----------------------------------------------------------
 
 elif menu == "📄 Resume Analyzer":
+
     st.title("📄 Resume Analyzer")
+
     st.subheader("🎯 Select Your Target Job Role")
 
     job_role = st.selectbox(
@@ -760,23 +765,49 @@ elif menu == "📄 Resume Analyzer":
 
     st.markdown("---")
 
-
-
     uploaded_file = st.file_uploader(
-    "Upload Resume (PDF)",
-    type=["pdf"]
+        "Upload Resume (PDF)",
+        type=["pdf"]
     )
+    # ---------------------------------------
+    # Prevent Duplicate Resume Saving
+    # ---------------------------------------
+
+    if "last_uploaded_resume" not in st.session_state:
+        st.session_state.last_uploaded_resume = None
 
     if uploaded_file is not None:
 
         st.success("✅ Resume Uploaded Successfully!")
 
-        temp_path = os.path.join("app", uploaded_file.name)
+        # ---------------------------------------
+        # Create Upload Folder
+        # ---------------------------------------
 
-        with open(temp_path, "wb") as f:
+        upload_folder = "uploads"
+
+        os.makedirs(
+            upload_folder,
+            exist_ok=True
+        )
+
+        # ---------------------------------------
+        # Save Resume File
+        # ---------------------------------------
+
+        file_path = os.path.join(
+            upload_folder,
+            uploaded_file.name
+        )
+
+        with open(file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
-        resume_text = extract_resume_text(temp_path)
+        # ---------------------------------------
+        # Extract Resume Text
+        # ---------------------------------------
+
+        resume_text = extract_resume_text(file_path)
 
         st.subheader("📄 Extracted Resume Text")
 
@@ -788,48 +819,135 @@ elif menu == "📄 Resume Analyzer":
                 height=400
             )
 
+            # ---------------------------------------
+            # Detect Skills
+            # ---------------------------------------
+
+            skills = extract_skills(resume_text)
+
+            st.subheader("🛠 Detected Skills")
+
+            if len(skills) > 0:
+
+                for skill in skills:
+                    st.success(f"✅ {skill}")
+
+            else:
+
+                st.warning(
+                    "No known skills were detected."
+                )
+
+            # ---------------------------------------
+            # Missing Skills
+            # ---------------------------------------
+
+            missing_skills = recommend_skills(
+                skills,
+                job_role
+            )
+
+            st.subheader(
+                f"📚 Missing Skills for {job_role}"
+            )
+
+            if len(missing_skills) > 0:
+
+                for skill in missing_skills:
+
+                    st.error(
+                        f"❌ {skill}"
+                    )
+
+                    recommendation = get_learning_path(
+                        skill
+                    )
+
+                    st.info(
+                        f"📖 Recommendation: {recommendation}"
+                    )
+
+            else:
+
+                st.success(
+                    "🎉 Excellent! You already have "
+                    "all the required skills for this role."
+                )
+
+            # ---------------------------------------
+            # Resume Score
+            # ---------------------------------------
+
+            total_skills = len(skills)
+            missing_count = len(missing_skills)
+
+            if total_skills + missing_count > 0:
+
+                resume_score = (
+                    total_skills
+                    /
+                    (total_skills + missing_count)
+                ) * 100
+
+            else:
+
+                resume_score = 0
+
+            st.markdown("---")
+
+            st.subheader("📊 Resume Readiness")
+
+            st.metric(
+                "Resume Score",
+                f"{resume_score:.2f}/100"
+            )
+
+            # ---------------------------------------
+            # Resume Status
+            # ---------------------------------------
+
+            if resume_score >= 70:
+
+                resume_status = "Resume Ready"
+
+                st.success(
+                    "🟢 Resume is Ready for the selected job role."
+                )
+
+            else:
+
+                resume_status = "Needs Improvement"
+
+                st.warning(
+                    "🟡 Resume needs improvement for the selected job role."
+                )
+
+            # ---------------------------------------
+            # Save Resume Information
+            # ---------------------------------------
+
+            user_id = st.session_state.user["user_id"]
+
+            save_resume(
+                user_id,
+                uploaded_file.name,
+                file_path,
+                job_role,
+                float(resume_score),
+                resume_status,
+                skills,
+                missing_skills
+            )
+
+            st.success(
+                "💾 Resume analysis saved successfully!"
+            )
+
         else:
 
-            st.error("Unable to read the resume.")
-
-    # ---------------------------------------
-    # Detect Skills
-    # ---------------------------------------
-
-        skills = extract_skills(resume_text)
-
-        st.subheader("🛠 Detected Skills")
-
-        if len(skills) > 0:
-
-            for skill in skills:
-                st.success(f"✅ {skill}")
-
-        else:
-
-            st.warning("No known skills were detected.")
-
-        # ---------------------------------------
-        # Missing Skills
-        # ---------------------------------------
-
-        missing_skills = recommend_skills(skills, job_role)
-
-        st.subheader(f"📚 Missing Skills for {job_role}")
-
-        if len(missing_skills) > 0:
-
-            for skill in missing_skills:
-
-                st.error(f"❌ {skill}")
-
-                recommendation = get_learning_path(skill)
-
-                st.info(f"📖 Recommendation: {recommendation}")
-
-        else:
-
-            st.success("🎉 Excellent! You already have all the required skills for this role.")
+            st.error(
+                "❌ Unable to read the resume."
+            )
 # -----------------------------------------------------------
 # Prediction History
 # -----------------------------------------------------------
@@ -887,7 +1005,330 @@ elif menu == "👨‍🎓 Student Records":
             records,
             width="stretch"
         )
+# -----------------------------------------------------------
+# Admin - Resume Analysis
+# -----------------------------------------------------------
 
+elif menu == "📄 Resume Analysis":
+
+    st.title("📄 Student Resume Analysis")
+
+    st.write(
+        "View and analyze resumes uploaded by students."
+    )
+
+    # ---------------------------------------
+    # Fetch Resume Records
+    # ---------------------------------------
+
+    resume_df = get_student_resumes()
+
+    if resume_df.empty:
+
+        st.info(
+            "📭 No student resumes have been uploaded yet."
+        )
+
+    else:
+
+        # ---------------------------------------
+        # Search Student
+        # ---------------------------------------
+
+        st.subheader("🔎 Search Students")
+
+        search_text = st.text_input(
+            "Search by student name or email",
+            placeholder="Enter student name or email..."
+        )
+
+        # ---------------------------------------
+        # Filter Records
+        # ---------------------------------------
+
+        filtered_df = resume_df.copy()
+
+        if search_text:
+
+            search_text = search_text.lower()
+
+            filtered_df = filtered_df[
+                filtered_df["Student Name"]
+                .str.lower()
+                .str.contains(
+                    search_text,
+                    na=False
+                )
+                |
+                filtered_df["Email"]
+                .str.lower()
+                .str.contains(
+                    search_text,
+                    na=False
+                )
+            ]
+
+        # ---------------------------------------
+        # Student Count
+        # ---------------------------------------
+
+        st.write(
+            f"**Students found:** {len(filtered_df)}"
+        )
+
+        if filtered_df.empty:
+
+            st.warning(
+                "No students found matching your search."
+            )
+
+        else:
+
+            # ---------------------------------------
+            # Student Table
+            # ---------------------------------------
+
+            st.subheader("👨‍🎓 Student Resumes")
+
+            display_df = filtered_df[
+                [
+                    "Resume ID",
+                    "Student Name",
+                    "Email",
+                    "Target Job Role",
+                    "Resume Score",
+                    "Resume Status",
+                    "Uploaded At"
+                ]
+            ].copy()
+
+            st.dataframe(
+                display_df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+            st.markdown("---")
+
+            # ---------------------------------------
+            # Select Student for Detailed Analysis
+            # ---------------------------------------
+
+            st.subheader(
+                "📋 View Detailed Resume Analysis"
+            )
+
+            student_options = (
+                filtered_df["Resume ID"]
+                .astype(str)
+                + " - "
+                + filtered_df["Student Name"]
+                + " - "
+                + filtered_df["Email"]
+            ).tolist()
+
+            selected_student = st.selectbox(
+                "Select Resume",
+                student_options
+            )
+
+            selected_index = student_options.index(
+                selected_student
+            )
+
+            selected_resume = filtered_df.iloc[
+                selected_index
+            ]
+
+            st.markdown("---")
+
+            # ---------------------------------------
+            # Student Information
+            # ---------------------------------------
+
+            st.subheader("👤 Student Information")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                st.write(
+                    f"**Student Name:** "
+                    f"{selected_resume['Student Name']}"
+                )
+
+                st.write(
+                    f"**Email:** "
+                    f"{selected_resume['Email']}"
+                )
+
+                st.write(
+                    f"**User ID:** "
+                    f"{selected_resume['User ID']}"
+                )
+
+            with col2:
+
+                st.write(
+                    f"**Target Job Role:** "
+                    f"{selected_resume['Target Job Role']}"
+                )
+
+                st.write(
+                    f"**Resume File:** "
+                    f"{selected_resume['File Name']}"
+                )
+
+                st.write(
+                    f"**Uploaded At:** "
+                    f"{selected_resume['Uploaded At']}"
+                )
+
+            st.markdown("---")
+
+            # ---------------------------------------
+            # Resume Score & Status
+            # ---------------------------------------
+
+            st.subheader("📊 Resume Readiness")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                st.metric(
+                    "Resume Score",
+                    f"{float(selected_resume['Resume Score']):.2f}/100"
+                )
+
+            with col2:
+
+                if (
+                    selected_resume["Resume Status"]
+                    == "Resume Ready"
+                ):
+
+                    st.success(
+                        "🟢 Resume Ready"
+                    )
+
+                else:
+
+                    st.warning(
+                        "🟡 Needs Improvement"
+                    )
+
+            st.markdown("---")
+
+            # ---------------------------------------
+            # Detected Skills
+            # ---------------------------------------
+
+            st.subheader("🛠 Detected Skills")
+
+            detected_skills = selected_resume[
+                "Detected Skills"
+            ]
+
+            if (
+                isinstance(detected_skills, str)
+                and detected_skills.strip()
+            ):
+
+                skills = [
+                    skill.strip()
+                    for skill in detected_skills.split(",")
+                    if skill.strip()
+                ]
+
+                for skill in skills:
+
+                    st.success(
+                        f"✅ {skill}"
+                    )
+
+            else:
+
+                st.warning(
+                    "No detected skills available."
+                )
+
+            # ---------------------------------------
+            # Missing Skills
+            # ---------------------------------------
+
+            st.subheader("📚 Missing Skills")
+
+            missing_skills = selected_resume[
+                "Missing Skills"
+            ]
+
+            if (
+                isinstance(missing_skills, str)
+                and missing_skills.strip()
+            ):
+
+                skills = [
+                    skill.strip()
+                    for skill in missing_skills.split(",")
+                    if skill.strip()
+                ]
+
+                for skill in skills:
+
+                    st.error(
+                        f"❌ {skill}"
+                    )
+
+            else:
+
+                st.success(
+                    "🎉 No missing skills identified."
+                )
+
+            st.markdown("---")
+
+            # ---------------------------------------
+            # Download Resume
+            # ---------------------------------------
+
+            st.subheader("📄 Resume File")
+
+            resume_data = get_resume_by_user(
+                int(selected_resume["User ID"])
+            )
+
+            if resume_data:
+
+                resume_file_path = resume_data[2]
+
+                if os.path.exists(resume_file_path):
+
+                    with open(
+                        resume_file_path,
+                        "rb"
+                    ) as file:
+
+                        resume_bytes = file.read()
+
+                    st.download_button(
+                        label="⬇️ Download Resume",
+                        data=resume_bytes,
+                        file_name=selected_resume["File Name"],
+                        mime="application/pdf"
+                    )
+
+                else:
+
+                    st.warning(
+                        "⚠️ Resume file could not be found."
+                    )
+
+            else:
+
+                st.warning(
+                    "⚠️ Resume information not found."
+                )
 # -----------------------------------------------------------
 # About
 # -----------------------------------------------------------

@@ -201,3 +201,148 @@ def get_student_records():
     connection.close()
 
     return df
+
+# ==========================================
+# Resume Operations
+# ==========================================
+
+def save_resume(
+    user_id,
+    file_name,
+    file_path,
+    target_job_role,
+    resume_score,
+    resume_status,
+    detected_skills,
+    missing_skills
+):
+    """
+    Save a student's resume analysis in MySQL.
+    """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    # Convert skill lists into text
+    detected_skills_text = ", ".join(detected_skills)
+    missing_skills_text = ", ".join(missing_skills)
+
+    query = """
+    INSERT INTO resumes
+    (
+        user_id,
+        file_name,
+        file_path,
+        target_job_role,
+        resume_score,
+        resume_status,
+        detected_skills,
+        missing_skills
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """
+
+    values = (
+        user_id,
+        file_name,
+        file_path,
+        target_job_role,
+        resume_score,
+        resume_status,
+        detected_skills_text,
+        missing_skills_text
+    )
+
+    cursor.execute(query, values)
+
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+def get_student_resumes():
+    """
+    Fetch all student resumes for Admin.
+    """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    query = """
+    SELECT
+        r.resume_id,
+        u.user_id,
+        u.full_name,
+        u.email,
+        r.file_name,
+        r.target_job_role,
+        r.resume_score,
+        r.resume_status,
+        r.detected_skills,
+        r.missing_skills,
+        r.uploaded_at
+    FROM resumes r
+    JOIN users u
+        ON r.user_id = u.user_id
+    WHERE u.role = 'student'
+    ORDER BY r.uploaded_at DESC
+    """
+
+    cursor.execute(query)
+
+    rows = cursor.fetchall()
+
+    columns = [
+        "Resume ID",
+        "User ID",
+        "Student Name",
+        "Email",
+        "File Name",
+        "Target Job Role",
+        "Resume Score",
+        "Resume Status",
+        "Detected Skills",
+        "Missing Skills",
+        "Uploaded At"
+    ]
+
+    df = pd.DataFrame(rows, columns=columns)
+
+    cursor.close()
+    connection.close()
+
+    return df
+
+def get_resume_by_user(user_id):
+    """
+    Fetch the latest resume of a particular student.
+    """
+
+    connection = create_connection()
+    cursor = connection.cursor()
+
+    query = """
+    SELECT
+        resume_id,
+        file_name,
+        file_path,
+        target_job_role,
+        resume_score,
+        resume_status,
+        detected_skills,
+        missing_skills,
+        uploaded_at
+    FROM resumes
+    WHERE user_id = %s
+    ORDER BY uploaded_at DESC
+    LIMIT 1
+    """
+
+    cursor.execute(query, (int(user_id),))
+
+    row = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    return row
