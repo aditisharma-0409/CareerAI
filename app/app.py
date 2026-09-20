@@ -928,21 +928,33 @@ elif menu == "📄 Resume Analyzer":
 
             user_id = st.session_state.user["user_id"]
 
-            save_resume(
-                user_id,
-                uploaded_file.name,
-                file_path,
-                job_role,
-                float(resume_score),
-                resume_status,
-                skills,
-                missing_skills
+            resume_key = (
+                str(user_id)
+                + "_"
+                + uploaded_file.name
             )
 
-            st.success(
-                "💾 Resume analysis saved successfully!"
-            )
+            if (
+                st.session_state.last_uploaded_resume
+                != resume_key
+            ):
 
+                save_resume(
+                    user_id,
+                    uploaded_file.name,
+                    file_path,
+                    job_role,
+                    float(resume_score),
+                    resume_status,
+                    skills,
+                    missing_skills
+                )
+
+                st.session_state.last_uploaded_resume = resume_key
+
+                st.success(
+                    "💾 Resume analysis saved successfully!"
+                )
         else:
 
             st.error(
