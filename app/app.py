@@ -418,89 +418,247 @@ elif menu == "🏠 Admin Dashboard":
     st.title("👤 Admin Dashboard")
 
     st.subheader(
-        "CareerAI Placement Management"
+        "CareerAI Placement Management System"
+    )
+
+    st.write(
+        "Monitor student placement predictions, "
+        "resume activity and overall placement performance."
     )
 
     st.markdown("---")
+
+    # ------------------------------------------------------
+    # Placement Statistics
+    # ------------------------------------------------------
 
     total_predictions, placed_students, not_placed_students = (
         get_dashboard_stats()
     )
 
+    # Calculate placement percentage
+    if total_predictions > 0:
+
+        placement_percentage = (
+            placed_students / total_predictions
+        ) * 100
+
+    else:
+
+        placement_percentage = 0
+
+    # ------------------------------------------------------
+    # Main Statistics
+    # ------------------------------------------------------
+
     st.subheader("📊 Placement Overview")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
 
         st.metric(
-            "Total Predictions",
+            "👨‍🎓 Total Predictions",
             total_predictions
         )
 
     with col2:
 
         st.metric(
-            "Likely Placed",
+            "🟢 Likely Placed",
             placed_students
         )
 
     with col3:
 
         st.metric(
-            "Likely Not Placed",
+            "🔴 Likely Not Placed",
             not_placed_students
         )
 
+    with col4:
+
+        st.metric(
+            "📈 Placement Rate",
+            f"{placement_percentage:.2f}%"
+        )
+
     st.markdown("---")
+
+    # ------------------------------------------------------
+    # Placement Summary
+    # ------------------------------------------------------
+
+    st.subheader("📌 Placement Summary")
+
+    if total_predictions > 0:
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.write(
+                f"**Likely Placed Students:** "
+                f"{placed_students}"
+            )
+
+            st.progress(
+                min(
+                    placed_students / total_predictions,
+                    1.0
+                )
+            )
+
+        with col2:
+
+            st.write(
+                f"**Likely Not Placed Students:** "
+                f"{not_placed_students}"
+            )
+
+            st.progress(
+                min(
+                    not_placed_students / total_predictions,
+                    1.0
+                )
+            )
+
+    else:
+
+        st.info(
+            "📭 No placement predictions are available yet."
+        )
+
+    st.markdown("---")
+
+    # ------------------------------------------------------
+    # Student Monitoring
+    # ------------------------------------------------------
 
     st.subheader("👨‍🎓 Student Monitoring")
 
     st.write(
         """
-        As an administrator, you can monitor student
-        placement predictions, analyze student profiles
-        and view overall placement statistics.
+        The Admin Portal allows administrators to monitor
+        student placement predictions, review student
+        records and analyze uploaded resumes.
         """
     )
 
     st.markdown("---")
 
-    st.subheader("📌 Admin Functions")
+    # ------------------------------------------------------
+    # Admin Functions
+    # ------------------------------------------------------
 
-    col1, col2 = st.columns(2)
+    st.subheader("🛠 Admin Functions")
+
+    col1, col2, col3 = st.columns(3)
 
     with col1:
 
         st.info(
             "👨‍🎓 **Student Records**\n\n"
-            "View registered student information."
+            "View and monitor registered student "
+            "information and placement records."
         )
 
     with col2:
 
         st.info(
             "📊 **Placement Statistics**\n\n"
-            "Analyze overall placement prediction results."
+            "Analyze placement prediction results "
+            "and overall placement performance."
         )
-# -----------------------------------------------------------
-# Placement Prediction Page
-# -----------------------------------------------------------
+
+    with col3:
+
+        st.info(
+            "📄 **Resume Analysis**\n\n"
+            "Review student resumes, detected skills, "
+            "missing skills and resume readiness."
+        )
+
+    st.markdown("---")
+
+    # ------------------------------------------------------
+    # Admin Quick Overview
+    # ------------------------------------------------------
+
+    st.subheader("⚡ Quick Overview")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        if total_predictions > 0:
+
+            st.success(
+                f"🟢 {placed_students} student(s) are "
+                f"currently predicted as likely placed."
+            )
+
+        else:
+
+            st.info(
+                "No placement predictions available."
+            )
+
+    with col2:
+
+        if total_predictions > 0:
+
+            st.warning(
+                f"🟡 {not_placed_students} student(s) are "
+                f"currently predicted as likely not placed."
+            )
+
+        else:
+
+            st.info(
+                "No placement predictions available."
+            )
+
+    st.markdown("---")
+
+    # ------------------------------------------------------
+    # Admin Guidance
+    # ------------------------------------------------------
+
+    st.subheader("💡 Admin Guidance")
+
+    st.write(
+        """
+        Use the Admin Portal to:
+
+        • Monitor student placement predictions  
+        • Review placement statistics  
+        • View registered student records  
+        • Analyze student resumes  
+        • Identify skill gaps  
+        • Monitor overall placement readiness
+        """
+    )
+
+
+
+# ==========================================================
+# PLACEMENT PREDICTION
+# ==========================================================
 
 elif menu == "🎓 Placement Prediction":
+
     st.title("🎓 Placement Prediction")
 
-    st.markdown(
+    st.write(
         "Enter the student's academic and skill details below."
     )
 
     st.markdown("---")
 
-
-
-    # ------------------------------------
+    # ------------------------------------------------------
     # Student Information
-    # ------------------------------------
+    # ------------------------------------------------------
 
     st.subheader("👤 Student Information")
 
@@ -522,13 +680,16 @@ elif menu == "🎓 Placement Prediction":
 
     st.markdown("---")
 
-    # ------------------------------------
-    # Student Input Form
-    # ------------------------------------
+    # ------------------------------------------------------
+    # Academic and Skill Information
+    # ------------------------------------------------------
+
+    st.subheader("📚 Academic & Skill Information")
 
     col1, col2 = st.columns(2)
 
     with col1:
+
         cgpa = st.number_input(
             "CGPA",
             min_value=0.0,
@@ -540,115 +701,179 @@ elif menu == "🎓 Placement Prediction":
         internships = st.number_input(
             "Internships",
             min_value=0,
-            value=1
+            value=1,
+            step=1
         )
 
         projects = st.number_input(
             "Projects",
             min_value=0,
-            value=2
+            value=2,
+            step=1
         )
 
         workshops = st.number_input(
             "Workshops / Certifications",
             min_value=0,
-            value=2
+            value=2,
+            step=1
         )
 
         aptitude = st.number_input(
             "Aptitude Test Score",
             min_value=0,
             max_value=100,
-            value=80
+            value=80,
+            step=1
         )
 
     with col2:
+
         softskills = st.number_input(
             "Soft Skills Rating",
             min_value=0,
             max_value=10,
-            value=8
+            value=8,
+            step=1
         )
 
         extracurricular = st.selectbox(
             "Extracurricular Activities",
-            ["No", "Yes"]
+            [
+                "No",
+                "Yes"
+            ]
         )
 
         placement_training = st.selectbox(
             "Placement Training",
-            ["No", "Yes"]
+            [
+                "No",
+                "Yes"
+            ]
         )
 
         ssc = st.number_input(
             "SSC Marks",
             min_value=0.0,
             max_value=100.0,
-            value=85.0
+            value=85.0,
+            step=0.1
         )
 
         hsc = st.number_input(
             "HSC Marks",
             min_value=0.0,
             max_value=100.0,
-            value=85.0
+            value=85.0,
+            step=0.1
         )
 
     st.markdown("---")
 
+    # ------------------------------------------------------
+    # Prediction Button
+    # ------------------------------------------------------
+
     predict = st.button(
         "🚀 Predict Placement",
-        use_container_width=True
+        width="stretch"
     )
 
-    # ------------------------------------
+    # ------------------------------------------------------
     # Prediction
-    # ------------------------------------
+    # ------------------------------------------------------
 
     if predict:
+
+        # ----------------------------------------------
+        # Validate Student Name
+        # ----------------------------------------------
+
         if student_name.strip() == "":
-            st.warning("⚠ Please enter the student's name.")
+
+            st.warning(
+                "⚠️ Please enter the student's name."
+            )
+
             st.stop()
-        extracurricular_value = 1 if extracurricular == "Yes" else 0
-        placement_training_value = 1 if placement_training == "Yes" else 0
 
-        student = pd.DataFrame([[
-            cgpa,
-            internships,
-            projects,
-            workshops,
-            aptitude,
-            softskills,
-            extracurricular_value,
-            placement_training_value,
-            ssc,
-            hsc
-        ]], columns=[
-            "CGPA",
-            "Internships",
-            "Projects",
-            "Workshops/Certifications",
-            "AptitudeTestScore",
-            "SoftSkillsRating",
-            "ExtracurricularActivities",
-            "PlacementTraining",
-            "SSC_Marks",
-            "HSC_Marks"
-        ])
+        # ----------------------------------------------
+        # Convert Yes / No values to numbers
+        # ----------------------------------------------
 
-        prediction = model.predict(student)
-        probability = model.predict_proba(student)
-        confidence = probability.max() * 100
+        extracurricular_value = (
+            1
+            if extracurricular == "Yes"
+            else 0
+        )
 
-        # ------------------------------------
-        # Save Prediction in Database
-        # ------------------------------------
+        placement_training_value = (
+            1
+            if placement_training == "Yes"
+            else 0
+        )
+
+        # ----------------------------------------------
+        # Create Input DataFrame
+        # ----------------------------------------------
+
+        student = pd.DataFrame(
+            [[
+                cgpa,
+                internships,
+                projects,
+                workshops,
+                aptitude,
+                softskills,
+                extracurricular_value,
+                placement_training_value,
+                ssc,
+                hsc
+            ]],
+            columns=[
+                "CGPA",
+                "Internships",
+                "Projects",
+                "Workshops/Certifications",
+                "AptitudeTestScore",
+                "SoftSkillsRating",
+                "ExtracurricularActivities",
+                "PlacementTraining",
+                "SSC_Marks",
+                "HSC_Marks"
+            ]
+        )
+
+        # ----------------------------------------------
+        # Make Prediction
+        # ----------------------------------------------
+
+        prediction = model.predict(
+            student
+        )
+
+        probability = model.predict_proba(
+            student
+        )
+
+        confidence = (
+            probability.max() * 100
+        )
+
+        # ----------------------------------------------
+        # Prediction Result
+        # ----------------------------------------------
 
         prediction_result = (
             "Placed"
             if prediction[0] == 1
             else "Not Placed"
         )
+
+        # ----------------------------------------------
+        # Save Prediction
+        # ----------------------------------------------
 
         save_prediction(
             st.session_state.user["user_id"],
@@ -657,91 +882,144 @@ elif menu == "🎓 Placement Prediction":
             prediction_result,
             float(confidence)
         )
+
+        # ----------------------------------------------
+        # Display Result
+        # ----------------------------------------------
+
         st.markdown("---")
-        st.subheader("📊 Prediction Result")
+
+        st.subheader(
+            "📊 Prediction Result"
+        )
 
         if prediction[0] == 1:
-            st.success("🎉 Student is Likely to be Placed")
+
+            st.success(
+                "🎉 Student is Likely to be Placed"
+            )
+
         else:
-            st.error("❌ Student is Likely to be Not Placed")
+
+            st.error(
+                "❌ Student is Likely to be Not Placed"
+            )
 
         st.metric(
             label="Prediction Confidence",
             value=f"{confidence:.2f}%"
         )
 
-        st.markdown("---")
-
-        # ------------------------------------
+        # ----------------------------------------------
         # Student Summary
-        # ------------------------------------
+        # ----------------------------------------------
 
-        st.subheader("📋 Student Summary")
-
-        summary = pd.DataFrame({
-            "Feature": [
-                "CGPA",
-                "Internships",
-                "Projects",
-                "Workshops",
-                "Aptitude Score",
-                "Soft Skills",
-                "Extracurricular Activities",
-                "Placement Training",
-                "SSC Marks",
-                "HSC Marks"
-            ],
-            "Value": [
-                cgpa,
-                internships,
-                projects,
-                workshops,
-                aptitude,
-                softskills,
-                extracurricular,
-                placement_training,
-                ssc,
-                hsc
-            ]
-        })
-
-        st.table(summary)
         st.markdown("---")
 
-        # ------------------------------------
-        # Career Suggestions
-        # ------------------------------------
+        st.subheader(
+            "📋 Student Summary"
+        )
 
-        st.subheader("💡 Career Suggestions")
+        summary = pd.DataFrame(
+            {
+                "Feature": [
+                    "Student Name",
+                    "Target Job Role",
+                    "CGPA",
+                    "Internships",
+                    "Projects",
+                    "Workshops / Certifications",
+                    "Aptitude Test Score",
+                    "Soft Skills Rating",
+                    "Extracurricular Activities",
+                    "Placement Training",
+                    "SSC Marks",
+                    "HSC Marks"
+                ],
+                "Value": [
+                    student_name,
+                    job_role,
+                    cgpa,
+                    internships,
+                    projects,
+                    workshops,
+                    aptitude,
+                    softskills,
+                    extracurricular,
+                    placement_training,
+                    ssc,
+                    hsc
+                ]
+            }
+        )
+
+        st.dataframe(
+            summary,
+            use_container_width=True,
+            hide_index=True
+        )
+
+        # ----------------------------------------------
+        # Career Suggestions
+        # ----------------------------------------------
+
+        st.markdown("---")
+
+        st.subheader(
+            "💡 Career Suggestions"
+        )
 
         suggestions = []
 
         if cgpa < 7.5:
-            suggestions.append("📚 Improve your CGPA by focusing on academics.")
+
+            suggestions.append(
+                "📚 Improve your CGPA by focusing on academics."
+            )
 
         if internships < 2:
-            suggestions.append("🏢 Try to complete at least 2 internships.")
+
+            suggestions.append(
+                "🏢 Try to complete at least 2 internships."
+            )
 
         if projects < 3:
-            suggestions.append("💻 Build more real-world projects.")
+
+            suggestions.append(
+                "💻 Build more real-world projects."
+            )
 
         if aptitude < 70:
-            suggestions.append("🧠 Practice aptitude and logical reasoning regularly.")
+
+            suggestions.append(
+                "🧠 Practice aptitude and logical reasoning regularly."
+            )
 
         if softskills < 7:
-            suggestions.append("🎤 Improve communication and presentation skills.")
+
+            suggestions.append(
+                "🎤 Improve communication and presentation skills."
+            )
 
         if placement_training == "No":
-            suggestions.append("🎯 Join placement preparation or coding training.")
+
+            suggestions.append(
+                "🎯 Join placement preparation or coding training."
+            )
 
         if len(suggestions) == 0:
-            st.success("🎉 Excellent Profile! Keep maintaining your performance.")
+
+            st.success(
+                "🎉 Excellent Profile! Keep maintaining your performance."
+            )
+
         else:
+
             for item in suggestions:
+
                 st.write(item)
 
         st.markdown("---")
-
 # -----------------------------------------------------------
 # Student Resume Analyzer
 # -----------------------------------------------------------
@@ -974,7 +1252,9 @@ elif menu == "📊 My Prediction History":
 
     if history.empty:
 
-        st.info("📭 You have not made any predictions yet.")
+        st.info(
+            "📭 You have not made any predictions yet."
+        )
 
     else:
 
@@ -982,40 +1262,287 @@ elif menu == "📊 My Prediction History":
             f"Total Predictions: {len(history)}"
         )
 
+        # --------------------------------------------------
+        # Format Confidence
+        # --------------------------------------------------
+
+        if "Confidence (%)" in history.columns:
+
+            history["Confidence (%)"] = pd.to_numeric(
+                history["Confidence (%)"],
+                errors="coerce"
+            )
+
+            history["Confidence (%)"] = history[
+                "Confidence (%)"
+            ].apply(
+                lambda x:
+                f"{x:.2f}%"
+                if pd.notna(x)
+                else "N/A"
+            )
+
+        # --------------------------------------------------
+        # Display Prediction History
+        # --------------------------------------------------
+
         st.dataframe(
             history,
-            width="stretch"
+            width="stretch",
+            hide_index=True
         )
-
-# -----------------------------------------------------------
-# Admin Student Records
-# -----------------------------------------------------------
+# ==========================================================
+# STUDENT RECORDS
+# ==========================================================
 
 elif menu == "👨‍🎓 Student Records":
 
     st.title("👨‍🎓 Student Records")
 
-    st.markdown(
-        "View registered students and their placement prediction information."
+    st.write(
+        "View registered students and their placement "
+        "prediction information."
     )
 
     st.markdown("---")
+
+    # ------------------------------------------------------
+    # Fetch Student Records
+    # ------------------------------------------------------
 
     records = get_student_records()
 
     if records.empty:
 
-        st.info("📭 No student records found.")
+        st.info(
+            "📭 No student records found."
+        )
 
     else:
 
-        st.success(
-            f"Total Student Records: {len(records)}"
+        # --------------------------------------------------
+        # Overview
+        # --------------------------------------------------
+
+        st.subheader("📊 Student Overview")
+
+        total_students = len(records)
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric(
+                "👨‍🎓 Total Records",
+                total_students
+            )
+
+        with col2:
+
+            placed_count = (
+                records["Prediction"]
+                .astype(str)
+                .str.lower()
+                .eq("placed")
+                .sum()
+            )
+
+            st.metric(
+                "🟢 Likely Placed",
+                int(placed_count)
+            )
+
+        with col3:
+
+            not_placed_count = (
+                records["Prediction"]
+                .astype(str)
+                .str.lower()
+                .eq("not placed")
+                .sum()
+            )
+
+            st.metric(
+                "🔴 Likely Not Placed",
+                int(not_placed_count)
+            )
+
+        st.markdown("---")
+
+        # --------------------------------------------------
+        # Search
+        # --------------------------------------------------
+
+        st.subheader("🔎 Search Students")
+
+        search_text = st.text_input(
+            "Search by student name or email",
+            placeholder="Enter student name or email..."
         )
 
-        st.dataframe(
-            records,
-            width="stretch"
+        filtered_records = records.copy()
+
+        if search_text:
+
+            search_text = search_text.strip().lower()
+
+            name_match = (
+                filtered_records["Student Name"]
+                .astype(str)
+                .str.lower()
+                .str.contains(
+                    search_text,
+                    na=False
+                )
+            )
+
+            email_match = (
+                filtered_records["Email"]
+                .astype(str)
+                .str.lower()
+                .str.contains(
+                    search_text,
+                    na=False
+                )
+            )
+
+            filtered_records = filtered_records[
+                name_match | email_match
+            ]
+
+        # --------------------------------------------------
+        # Filters
+        # --------------------------------------------------
+
+        st.subheader("🎯 Filters")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            prediction_filter = st.selectbox(
+                "Placement Prediction",
+                [
+                    "All",
+                    "Placed",
+                    "Not Placed"
+                ]
+            )
+
+        with col2:
+
+            job_roles = [
+                "All"
+            ]
+
+            if "Target Job Role" in records.columns:
+
+                available_roles = (
+                    records["Target Job Role"]
+                    .dropna()
+                    .astype(str)
+                    .unique()
+                    .tolist()
+                )
+
+                available_roles.sort()
+
+                job_roles.extend(
+                    available_roles
+                )
+
+            job_role_filter = st.selectbox(
+                "Target Job Role",
+                job_roles
+            )
+
+        # --------------------------------------------------
+        # Apply Prediction Filter
+        # --------------------------------------------------
+
+        if prediction_filter != "All":
+
+            filtered_records = filtered_records[
+                filtered_records["Prediction"]
+                .astype(str)
+                .str.lower()
+                ==
+                prediction_filter.lower()
+            ]
+
+        # --------------------------------------------------
+        # Apply Job Role Filter
+        # --------------------------------------------------
+
+        if job_role_filter != "All":
+
+            filtered_records = filtered_records[
+                filtered_records["Target Job Role"]
+                .astype(str)
+                ==
+                job_role_filter
+            ]
+
+        st.markdown("---")
+
+        # --------------------------------------------------
+        # Filter Result
+        # --------------------------------------------------
+
+        st.write(
+            f"**Students found:** "
+            f"{len(filtered_records)}"
+        )
+
+        # --------------------------------------------------
+        # Student Table
+        # --------------------------------------------------
+
+        if filtered_records.empty:
+
+            st.warning(
+                "No students found matching the selected filters."
+            )
+
+        else:
+
+            st.subheader("👨‍🎓 Student List")
+
+            # Show only important columns
+            display_columns = [
+                "User ID",
+                "Student Name",
+                "Email",
+                "Target Job Role",
+                "Prediction",
+                "Confidence (%)",
+                "Date & Time"
+            ]
+
+            available_columns = [
+                column
+                for column in display_columns
+                if column in filtered_records.columns
+            ]
+
+            student_table = filtered_records[
+                available_columns
+            ].copy()
+
+            st.dataframe(
+                student_table,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        # --------------------------------------------------
+        # Reset Filters
+        # --------------------------------------------------
+
+        st.markdown("---")
+
+        st.caption(
+            "💡 Resume details and individual resume analysis "
+            "are available separately under Resume Analysis."
         )
 # -----------------------------------------------------------
 # Admin - Resume Analysis
