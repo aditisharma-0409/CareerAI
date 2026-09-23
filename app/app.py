@@ -25,7 +25,9 @@ from backend.database.operations import (
     get_student_records,
     save_resume,
     get_student_resumes,
-    get_resume_by_user
+    get_resume_by_user,
+    create_notification,
+    get_student_notifications
 )
 from backend.auth.authentication import (
     login_user,
@@ -286,6 +288,7 @@ if user_role == "student":
             "🎓 Placement Prediction",
             "📄 Resume Analyzer",
             "📊 My Prediction History",
+            "🔔 Notifications",
             "👨‍💻 About"
         ]
     )
@@ -308,6 +311,7 @@ elif user_role == "admin":
             "📊 Placement Statistics",
             "👨‍🎓 Student Records",
             "📄 Resume Analysis",
+            "🔔 Notifications",
             "👨‍💻 About"
         ]
     )
@@ -1291,6 +1295,48 @@ elif menu == "📊 My Prediction History":
             width="stretch",
             hide_index=True
         )
+
+elif menu == "🔔 Notifications" and user_role == "student":
+
+    st.title("🔔 Notifications")
+
+    st.write(
+        "View important updates and messages from CareerAI."
+    )
+
+    st.markdown("---")
+
+    user_id = st.session_state.user["user_id"]
+
+    notifications = get_student_notifications(user_id)
+
+    if notifications.empty:
+
+        st.info(
+            "📭 You don't have any notifications yet."
+        )
+
+    else:
+
+        st.success(
+            f"🔔 Total Notifications: {len(notifications)}"
+        )
+
+        for _, notification in notifications.iterrows():
+
+            st.markdown(
+                f"""
+                ### 📌 {notification["Title"]}
+
+                **Type:** {notification["Type"].title()}
+
+                {notification["Message"]}
+
+                🕒 {notification["Created At"]}
+                """
+            )
+
+            st.markdown("---")
 # ==========================================================
 # STUDENT RECORDS
 # ==========================================================
@@ -1867,6 +1913,105 @@ elif menu == "📄 Resume Analysis":
 
                 st.warning(
                     "⚠️ Resume information not found."
+                )
+
+elif menu == "🔔 Notifications" and user_role == "admin":
+
+    st.title("🔔 Notifications")
+
+    st.write(
+        "Send notifications and important updates to students."
+    )
+
+    st.markdown("---")
+
+    st.subheader("📨 Send Notification")
+
+    # Get student records
+    students = get_student_records()
+
+    if students.empty:
+
+        st.info("📭 No students are available.")
+
+    else:
+
+        # --------------------------------------------------
+        # Select Student
+        # --------------------------------------------------
+
+        student_options = {
+            f"{row['Student Name']} ({row['Email']})":
+            row["User ID"]
+            for _, row in students.iterrows()
+        }
+
+        selected_student = st.selectbox(
+            "👨‍🎓 Select Student",
+            list(student_options.keys())
+        )
+
+        selected_user_id = student_options[selected_student]
+
+        # --------------------------------------------------
+        # Notification Details
+        # --------------------------------------------------
+
+        title = st.text_input(
+            "📌 Notification Title",
+            placeholder="Enter notification title"
+        )
+
+        message = st.text_area(
+            "💬 Notification Message",
+            placeholder="Enter notification message",
+            height=120
+        )
+
+        notification_type = st.selectbox(
+            "🏷️ Notification Type",
+            [
+                "general",
+                "placement",
+                "resume",
+                "interview",
+                "important"
+            ]
+        )
+
+        # --------------------------------------------------
+        # Send Notification
+        # --------------------------------------------------
+
+        if st.button(
+            "📨 Send Notification",
+            use_container_width=True
+        ):
+
+            if not title.strip():
+
+                st.error(
+                    "⚠️ Please enter a notification title."
+                )
+
+            elif not message.strip():
+
+                st.error(
+                    "⚠️ Please enter a notification message."
+                )
+
+            else:
+
+                create_notification(
+                    selected_user_id,
+                    title.strip(),
+                    message.strip(),
+                    notification_type
+                )
+
+                st.success(
+                    f"✅ Notification sent successfully to "
+                    f"{selected_student}!"
                 )
 # -----------------------------------------------------------
 # About
