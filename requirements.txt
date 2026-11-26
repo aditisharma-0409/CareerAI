@@ -1,0 +1,8 @@
+streamlit
+pandas
+scikit-learn
+joblib
+mysql-connector-python
+PyMuPDF
+python-dotenv
+bcrypt
