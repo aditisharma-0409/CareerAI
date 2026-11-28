@@ -177,23 +177,19 @@ def get_student_records():
     FROM users u
     LEFT JOIN (
         SELECT
-            ph.user_id,
-            ph.job_role,
-            ph.prediction,
-            ph.confidence,
-            ph.created_at
-        FROM prediction_history ph
-        INNER JOIN (
-            SELECT
-                user_id,
-                MAX(id) AS latest_id
-            FROM prediction_history
-            GROUP BY user_id
-        ) latest
-            ON ph.user_id = latest.user_id
-            AND ph.id = latest.latest_id
+            user_id,
+            job_role,
+            prediction,
+            confidence,
+            created_at,
+            ROW_NUMBER() OVER (
+                PARTITION BY user_id
+                ORDER BY created_at DESC
+            ) AS rn
+        FROM prediction_history
     ) p
         ON p.user_id = u.user_id
+        AND p.rn = 1
     WHERE u.role = 'student'
     ORDER BY u.user_id ASC
     """
