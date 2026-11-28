@@ -156,68 +156,46 @@ def get_dashboard_stats():
 # ==========================================
 def get_student_records():
     """
-    Fetch all students for Admin.
-    Shows only the latest placement prediction
-    for each student.
+    Fetch all students for Admin along with their latest
+    placement prediction if available.
     """
-
     connection = create_connection()
     cursor = connection.cursor()
 
-    query = """
-    SELECT
-        u.user_id,
-        u.full_name,
-        u.email,
-        u.role,
-        COALESCE(p.job_role, 'Not available') AS job_role,
-        COALESCE(p.prediction, 'Not predicted yet') AS prediction,
-        p.confidence,
-        p.created_at
-    FROM users u
-    LEFT JOIN (
+    try:
+        query = """
         SELECT
-            user_id,
-            job_role,
-            prediction,
-            confidence,
-            created_at,
-            ROW_NUMBER() OVER (
-                PARTITION BY user_id
-                ORDER BY created_at DESC, id DESC
-            ) AS rn
-        FROM prediction_history
-    ) p
-        ON p.user_id = u.user_id
-        AND p.rn = 1
-    WHERE u.role = 'student'
-    ORDER BY u.user_id ASC
-    """
+            u.user_id,
+            u.full_name,
+            u.email,
+            u.role,
+            COALESCE(p.job_role, 'Not available') AS job_role,
+            COALESCE(p.prediction, 'Not predicted yet') AS prediction,
+            p.confidence,
+            p.created_at
+        FROM users u
+        LEFT JOIN prediction_history p
+            ON p.user_id = u.user_id
+        WHERE u.role = 'student'
+        ORDER BY u.user_id ASC, p.created_at DESC
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
 
-    cursor.execute(query)
-
-    rows = cursor.fetchall()
-
-    columns = [
-        "User ID",
-        "Student Name",
-        "Email",
-        "Role",
-        "Target Job Role",
-        "Prediction",
-        "Confidence (%)",
-        "Date & Time"
-    ]
-
-    df = pd.DataFrame(
-        rows,
-        columns=columns
-    )
-
-    cursor.close()
-    connection.close()
-
-    return df
+        columns = [
+            "User ID",
+            "Student Name",
+            "Email",
+            "Role",
+            "Target Job Role",
+            "Prediction",
+            "Confidence (%)",
+            "Date & Time",
+        ]
+        return pd.DataFrame(rows, columns=columns)
+    finally:
+        cursor.close()
+        connection.close()
 # ==========================================
 # Resume Operations
 # ==========================================
