@@ -82,6 +82,20 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+st.markdown(
+    """
+    <style>
+        /* Hide Streamlit top header bar and Deploy button */
+        header[data-testid="stHeader"] {
+            display: none !important;
+        }
+        .stAppDeployButton, [data-testid="stToolbar"] {
+            display: none !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ==========================================================
 # MODERN EMERALD TEAL & SLATE APPLICATION THEME
