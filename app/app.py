@@ -50,10 +50,7 @@ from backend.database.operations import (
     get_notified_students_for_drive,
     log_drive_email_notification,
 )
-from backend.auth.authentication import (
-    login_user,
-    register_student,
-)
+from backend.auth.authentication import login_user, register_student, reset_password_by_email;
 
 # -----------------------------
 # Session State Initialization
@@ -681,15 +678,29 @@ if not st.session_state.logged_in:
                         placeholder="student@davuniversity.org",
                         key="forgot_password_email",
                     )
-                    if st.button("Request Password Reset", type="secondary", use_container_width=True):
+                    new_password = st.text_input(
+                        "Enter new password",
+                        type="password",
+                        key="forgot_new_password",
+                    )
+                    confirm_password = st.text_input(
+                        "Confirm new password",
+                        type="password",
+                        key="forgot_confirm_password",
+                    )
+                    if st.button("Reset Password", type="secondary", use_container_width=True):
                         if not reset_email.strip() or "@" not in reset_email:
                             st.warning("Please enter a valid registered email address.")
+                        elif not new_password or len(new_password) < 6:
+                            st.warning("New password must be at least 6 characters long.")
+                        elif new_password != confirm_password:
+                            st.error("New password and confirm password do not match.")
                         else:
-                            st.info(
-                                "Password reset assistance is handled by the DAV University "
-                                "Training & Placement Cell. Please contact the Placement Admin "
-                                f"with your registered email ({reset_email.strip()})."
-                            )
+                            ok, msg = reset_password_by_email(reset_email, new_password)
+                            if ok:
+                                st.success(msg)
+                            else:
+                                st.error(msg)
 
                 st.divider()
                 if st.button("Create Student Account", type="secondary", use_container_width=True):

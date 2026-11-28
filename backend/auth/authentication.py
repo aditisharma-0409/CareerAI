@@ -171,3 +171,54 @@ def login_user(email, password):
 
         cursor.close()
         connection.close()
+
+# ==========================================
+# Reset Password by Email
+# ==========================================
+
+def reset_password_by_email(email, new_password):
+    """
+    Update a user's bcrypt password hash in `users` by email.
+    """
+    clean_email = (email or "").strip().lower()
+
+    if not clean_email:
+        return False, "Please enter a valid email address."
+
+    if not new_password or len(new_password) < 6:
+        return False, "New password must be at least 6 characters long."
+
+    connection = create_connection()
+
+    if connection is None:
+        return False, "Database connection failed."
+
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            "SELECT user_id FROM users WHERE LOWER(email) = %s",
+            (clean_email,)
+        )
+        existing_user = cursor.fetchone()
+
+        if existing_user is None:
+            return False, "No account found with this email address."
+
+        new_hash = hash_password(new_password)
+
+        cursor.execute(
+            "UPDATE users SET password_hash = %s WHERE LOWER(email) = %s",
+            (new_hash, clean_email)
+        )
+        connection.commit()
+
+        return True, "Password reset successfully. You can now sign in."
+
+    except Exception as error:
+        connection.rollback()
+        return False, str(error)
+
+    finally:
+        cursor.close()
+        connection.close()
