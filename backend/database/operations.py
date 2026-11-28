@@ -184,7 +184,7 @@ def get_student_records():
             created_at,
             ROW_NUMBER() OVER (
                 PARTITION BY user_id
-                ORDER BY created_at DESC
+                ORDER BY created_at DESC, id DESC
             ) AS rn
         FROM prediction_history
     ) p
