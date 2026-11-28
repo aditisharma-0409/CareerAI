@@ -158,30 +158,75 @@ def get_student_records():
     """
     Fetch all students for Admin along with their latest
     placement prediction if available.
-    TiDB-safe (avoids subqueries/window functions in JOIN ON).
+    Uses two simple SELECT queries + Python selection to avoid
+    TiDB JOIN/subquery parser error 1105.
     """
     connection = create_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
     try:
-        query = """
-        SELECT
-            u.user_id,
-            u.full_name,
-            u.email,
-            u.role,
-            p.job_role,
-            p.prediction,
-            p.confidence,
-            p.created_at
-        FROM users u
-        LEFT JOIN prediction_history p
-            ON p.user_id = u.user_id
-        WHERE u.role = 'student'
-        ORDER BY u.user_id ASC, p.created_at DESC, p.id DESC
-        """
-        cursor.execute(query)
-        rows = cursor.fetchall()
+        cursor.execute(
+            """
+            SELECT
+                user_id,
+                full_name,
+                email,
+                role
+            FROM users
+            WHERE role = 'student'
+            ORDER BY user_id ASC
+            """
+        )
+        students = cursor.fetchall()
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                user_id,
+                job_role,
+                prediction,
+                confidence,
+                created_at
+            FROM prediction_history
+            ORDER BY created_at DESC, id DESC
+            """
+        )
+        predictions = cursor.fetchall()
+
+        latest_by_user = {}
+        for pred in predictions:
+            uid = pred.get("user_id")
+            if uid is not None and uid not in latest_by_user:
+                latest_by_user[uid] = pred
+
+        records = []
+        for stu in students:
+            latest = latest_by_user.get(stu["user_id"])
+            records.append(
+                {
+                    "User ID": stu["user_id"],
+                    "Student Name": stu["full_name"],
+                    "Email": stu["email"],
+                    "Role": stu["role"],
+                    "Target Job Role": (
+                        latest["job_role"]
+                        if latest and latest.get("job_role")
+                        else "Not available"
+                    ),
+                    "Prediction": (
+                        latest["prediction"]
+                        if latest and latest.get("prediction")
+                        else "Not predicted yet"
+                    ),
+                    "Confidence (%)": (
+                        latest["confidence"] if latest else None
+                    ),
+                    "Date & Time": (
+                        latest["created_at"] if latest else None
+                    ),
+                }
+            )
 
         columns = [
             "User ID",
@@ -193,20 +238,8 @@ def get_student_records():
             "Confidence (%)",
             "Date & Time",
         ]
+        return pd.DataFrame(records, columns=columns)
 
-        df = pd.DataFrame(rows, columns=columns)
-
-        if df.empty:
-            df["Target Job Role"] = "Not available"
-            df["Prediction"] = "Not predicted yet"
-            return df
-
-        # Keep only the latest prediction row per student (first row after ORDER BY created_at DESC, id DESC)
-        df = df.drop_duplicates(subset=["User ID"], keep="first").reset_index(drop=True)
-        df["Target Job Role"] = df["Target Job Role"].fillna("Not available")
-        df["Prediction"] = df["Prediction"].fillna("Not predicted yet")
-
-        return df
     finally:
         cursor.close()
         connection.close()
