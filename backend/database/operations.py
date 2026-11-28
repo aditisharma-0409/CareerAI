@@ -158,6 +158,7 @@ def get_student_records():
     """
     Fetch all students for Admin along with their latest
     placement prediction if available.
+    TiDB-safe (avoids subqueries/window functions in JOIN ON).
     """
     connection = create_connection()
     cursor = connection.cursor()
@@ -169,15 +170,15 @@ def get_student_records():
             u.full_name,
             u.email,
             u.role,
-            COALESCE(p.job_role, 'Not available') AS job_role,
-            COALESCE(p.prediction, 'Not predicted yet') AS prediction,
+            p.job_role,
+            p.prediction,
             p.confidence,
             p.created_at
         FROM users u
         LEFT JOIN prediction_history p
             ON p.user_id = u.user_id
         WHERE u.role = 'student'
-        ORDER BY u.user_id ASC, p.created_at DESC
+        ORDER BY u.user_id ASC, p.created_at DESC, p.id DESC
         """
         cursor.execute(query)
         rows = cursor.fetchall()
@@ -192,7 +193,20 @@ def get_student_records():
             "Confidence (%)",
             "Date & Time",
         ]
-        return pd.DataFrame(rows, columns=columns)
+
+        df = pd.DataFrame(rows, columns=columns)
+
+        if df.empty:
+            df["Target Job Role"] = "Not available"
+            df["Prediction"] = "Not predicted yet"
+            return df
+
+        # Keep only the latest prediction row per student (first row after ORDER BY created_at DESC, id DESC)
+        df = df.drop_duplicates(subset=["User ID"], keep="first").reset_index(drop=True)
+        df["Target Job Role"] = df["Target Job Role"].fillna("Not available")
+        df["Prediction"] = df["Prediction"].fillna("Not predicted yet")
+
+        return df
     finally:
         cursor.close()
         connection.close()
